@@ -25,6 +25,7 @@ dependencies:
   - process
   - transformers
   - regex-pcre
+  - cmdargs
 
 library:
   source-dirs: src
