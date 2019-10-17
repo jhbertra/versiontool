@@ -15,34 +15,37 @@ import           Types
 
 data Versiontool
   = Analyze
+   { tagPrefix :: String
+   }
   | Changelog
-      { title :: String
-      , githubUrl :: String
-      }
+    { title :: String
+    , githubUrl :: String
+    , tagPrefix :: String
+    }
   deriving (Show, Data, Typeable)
 
-analyze = Analyze
+analyze = Analyze { tagPrefix = def }
 
-changelog = Changelog { title = def, githubUrl = def }
+changelog = Changelog { tagPrefix = def, title = def, githubUrl = def }
 
 main :: IO ()
 main = handle =<< cmdArgs (modes [analyze, changelog])
 
 handle :: Versiontool -> IO ()
-handle Analyze        = handleAnalyze
+handle Analyze {..}   = handleAnalyze tagPrefix
 handle Changelog {..} = do
-  currentVersion <- getCurrentVersion
-  commits        <- getCommitsSinceLastRelease
+  currentVersion <- getCurrentVersion tagPrefix
+  commits        <- getCommitsSinceLastRelease tagPrefix
   case getNextVersion currentVersion commits of
     Just v  -> handleChangelog title githubUrl v commits
     Nothing -> pure ()
 
-handleAnalyze :: IO ()
-handleAnalyze =
+handleAnalyze :: String -> IO ()
+handleAnalyze tagPrefix =
   maybe (pure ()) print
     =<< getNextVersion
-    <$> getCurrentVersion
-    <*> getCommitsSinceLastRelease
+    <$> getCurrentVersion tagPrefix
+    <*> getCommitsSinceLastRelease tagPrefix
 
 handleChangelog :: String -> String -> Version -> [Commit] -> IO ()
 handleChangelog title githubUrl Version {..} commits

@@ -32,8 +32,9 @@ data SummaryLine =
     , _summaryLineSummary :: String
     }
 
-getCurrentVersion :: IO Version
-getCurrentVersion = do
+getCurrentVersion :: String -> IO Version
+getCurrentVersion tagPrefix = do
+  let regex = "tag: " ++ tagPrefix ++ ".*([0-9])+\\.([0-9])+\\.([0-9])+"
   result <- runMaybeT $ do
     (exitCode, stdout, _) <- liftIO
       $ readProcessWithExitCode "git" ["log", "--pretty=format:%D"] ""
@@ -44,19 +45,19 @@ getCurrentVersion = do
       . pure
       . fmap
           (\tag ->
-            let [[_, major, minor, patch]] =
-                    tag =~ "tag: .*([0-9])+\\.([0-9])+\\.([0-9])+" :: [[String]]
+            let [[_, major, minor, patch]] = tag =~ regex :: [[String]]
             in  Version (read major) (read minor) (read patch)
           )
       . find (const True)
-      . map (head . filter (=~ "tag: .*[0-9]+\\.[0-9]+\\.[0-9]+"))
-      . filter (any (=~ "tag: .*[0-9]+\\.[0-9]+\\.[0-9]+"))
+      . map (head . filter (=~ regex))
+      . filter (any (=~ regex))
       . rights
       $ map (runParser refs () "line") logs
   pure $ fromMaybe (Version 0 0 0) result
 
-getCommitsSinceLastRelease :: IO [Commit]
-getCommitsSinceLastRelease = do
+getCommitsSinceLastRelease :: String -> IO [Commit]
+getCommitsSinceLastRelease tagPrefix = do
+  let regex = "tag: " ++ tagPrefix ++ ".*([0-9])+\\.([0-9])+\\.([0-9])+"
   results <- runMaybeT $ do
     (exitCode, stdout, _) <- liftIO
       $ readProcessWithExitCode "git" ["log", "--pretty=format:%H|%D"] ""
@@ -69,8 +70,7 @@ getCommitsSinceLastRelease = do
       . takeWhile
           (\HashAndRefs {..} ->
             null _hashAndRefsRefs
-              || all (\r -> not $ r =~ "tag: .*[0-9]+\\.[0-9]+\\.[0-9]+")
-                     _hashAndRefsRefs
+              || all (\r -> not $ r =~ regex) _hashAndRefsRefs
           )
       . rights
       $ map (runParser hashAndRefsP () "line") logs
