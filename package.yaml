@@ -26,6 +26,8 @@ dependencies:
   - transformers
   - regex-pcre
   - cmdargs
+  - split
+  - time
 
 library:
   source-dirs: src

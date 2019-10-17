@@ -2,7 +2,8 @@ module Types
   ( CommitType(..)
   , Commit(..)
   , Version(..)
-  ) where
+  )
+where
 
 data CommitType
   = Build
