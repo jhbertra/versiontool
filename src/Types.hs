@@ -16,6 +16,7 @@ data CommitType
   | Fix
   | Perf
   | Refactor
+  | Revert
   | Style
   | Test
   deriving (Eq, Ord, Show)

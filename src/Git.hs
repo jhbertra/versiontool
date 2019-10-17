@@ -87,10 +87,10 @@ readCommit hash = runMaybeT $ do
   body             <- readField "b" hash
   refsRaw          <- readField "D" hash
   SummaryLine {..} <- case runParser summaryLine () "line" summaryLineRaw of
-    Left  _ -> MaybeT $ pure Nothing
+    Left  e -> MaybeT $ pure Nothing
     Right s -> MaybeT . pure $ Just s
   refsParsed <- case runParser refs () "line" refsRaw of
-    Left  _ -> MaybeT $ pure Nothing
+    Left  e -> MaybeT $ pure Nothing
     Right s -> MaybeT . pure $ Just s
   pure $ Commit _summaryLineType
                 _summaryLineScope
@@ -116,12 +116,13 @@ summaryLine = SummaryLine <$> commitType <*> commitScope <*> commitSummary
 commitType :: Parsec String () CommitType
 commitType =
   (string "build" $> Build)
-    <|> (string "chore" $> Chore)
+    <|> try (string "chore" $> Chore)
     <|> (string "ci" $> Ci)
     <|> (string "docs" $> Docs)
-    <|> (string "feat" $> Feat)
+    <|> try (string "feat" $> Feat)
     <|> (string "fix" $> Fix)
     <|> (string "perf" $> Perf)
+    <|> try (string "revert" $> Revert)
     <|> (string "refactor" $> Refactor)
     <|> (string "style" $> Style)
     <|> (string "test" $> Test)

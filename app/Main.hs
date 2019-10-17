@@ -6,7 +6,6 @@ module Main where
 import           Control.Monad
 import           Data.List
 import           Data.List.Split
-import           Data.Maybe
 import           Data.Time
 import           Git
 import           SemVer
@@ -14,9 +13,12 @@ import           System.Console.CmdArgs
 import           Types
 
 data Versiontool
-  = Analyze
+  = Next
    { tagPrefix :: String
    }
+  | Current
+    { tagPrefix :: String
+    }
   | Changelog
     { title :: String
     , githubUrl :: String
@@ -24,21 +26,30 @@ data Versiontool
     }
   deriving (Show, Data, Typeable)
 
-analyze = Analyze { tagPrefix = def }
+next :: Versiontool
+next = Next { tagPrefix = def }
 
+current :: Versiontool
+current = Current { tagPrefix = def }
+
+changelog :: Versiontool
 changelog = Changelog { tagPrefix = def, title = def, githubUrl = def }
 
 main :: IO ()
-main = handle =<< cmdArgs (modes [analyze, changelog])
+main = handle =<< cmdArgs (modes [next, changelog, current])
 
 handle :: Versiontool -> IO ()
-handle Analyze {..}   = handleAnalyze tagPrefix
+handle Current {..}   = handleCurrent tagPrefix
+handle Next {..}      = handleAnalyze tagPrefix
 handle Changelog {..} = do
   currentVersion <- getCurrentVersion tagPrefix
   commits        <- getCommitsSinceLastRelease tagPrefix
   case getNextVersion currentVersion commits of
     Just v  -> handleChangelog title githubUrl v commits
     Nothing -> pure ()
+
+handleCurrent :: String -> IO ()
+handleCurrent tagPrefix = print =<< getCurrentVersion tagPrefix
 
 handleAnalyze :: String -> IO ()
 handleAnalyze tagPrefix =
