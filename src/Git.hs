@@ -82,6 +82,7 @@ getCommitsSinceLastRelease = do
 readCommit :: String -> IO (Maybe Commit)
 readCommit hash = runMaybeT $ do
   hash             <- readField "H" hash
+  shortHash        <- readField "h" hash
   summaryLineRaw   <- readField "s" hash
   body             <- readField "b" hash
   refsRaw          <- readField "D" hash
@@ -97,6 +98,7 @@ readCommit hash = runMaybeT $ do
                 _summaryLineSummary
                 body
                 refsParsed
+                shortHash
 
 readField :: String -> String -> MaybeT IO String
 readField field hash = do

@@ -9,6 +9,7 @@ import           Data.List.Split
 import           Data.Maybe
 import           Data.Time
 import           Git
+import           SemVer
 import           System.Console.CmdArgs
 import           Types
 
@@ -16,49 +17,35 @@ data Versiontool
   = Analyze
   | Changelog
       { title :: String
-      , url   :: String
+      , githubUrl :: String
       }
   deriving (Show, Data, Typeable)
 
 analyze = Analyze
 
-changelog = Changelog { title = def, url = def }
+changelog = Changelog { title = def, githubUrl = def }
 
 main :: IO ()
 main = handle =<< cmdArgs (modes [analyze, changelog])
 
 handle :: Versiontool -> IO ()
-handle Analyze =
-  maybe
-      (pure ())
-      (\Version {..} ->
-        putStrLn
-          $  show _versionMajor
-          ++ "."
-          ++ show _versionMinor
-          ++ "."
-          ++ show _versionPatch
-      )
-    =<< handleAnalyze
-    <$> getCurrentVersion
-    <*> getCommitsSinceLastRelease
-handle Changelog {..} =
-  join
-    $   handleChangelog title url
-    <$> getCurrentVersion
-    <*> getCommitsSinceLastRelease
+handle Analyze        = handleAnalyze
+handle Changelog {..} = do
+  currentVersion <- getCurrentVersion
+  commits        <- getCommitsSinceLastRelease
+  case getNextVersion currentVersion commits of
+    Just v  -> handleChangelog title githubUrl v commits
+    Nothing -> pure ()
 
-handleAnalyze :: Version -> [Commit] -> Maybe Version
-handleAnalyze Version {..} commits
-  | any hasBreakingChange commits = Just $ Version (_versionMajor + 1) 0 0
-  | any hasFeatureChange commits = Just
-  $ Version _versionMajor (_versionMinor + 1) 0
-  | any hasFixChange commits = Just
-  $ Version _versionMajor _versionMinor (_versionPatch + 1)
-  | otherwise = Nothing
+handleAnalyze :: IO ()
+handleAnalyze =
+  maybe (pure ()) print
+    =<< getNextVersion
+    <$> getCurrentVersion
+    <*> getCommitsSinceLastRelease
 
 handleChangelog :: String -> String -> Version -> [Commit] -> IO ()
-handleChangelog title url Version {..} commits
+handleChangelog title githubUrl Version {..} commits
   | null bugFixes && null features && null breakingChanges = pure ()
   | otherwise = do
     putStr "*"
@@ -68,8 +55,9 @@ handleChangelog title url Version {..} commits
       ++ show _versionMinor
       ++ "."
       ++ show _versionPatch
-    putStr " "
-    putStr title
+    unless (null title) $ do
+      putStr " "
+      putStr title
     putStr "*"
     putStr " ("
     putStr =<< show . localDay . zonedTimeToLocalTime <$> getZonedTime
@@ -81,31 +69,56 @@ handleChangelog title url Version {..} commits
         putStr "• "
         forM_ _commitScope
           $ \scope -> putStr "*" >> putStr scope >> putStr "*: "
-        putStrLn . last $ splitOn "BREAKING CHANGE: " _commitBody
+        putStr . takeWhile (/= '\n') . last $ splitOn "BREAKING CHANGE: "
+                                                      _commitBody
+        unless (null githubUrl)
+          .  putStrLn
+          $  " (<"
+          ++ githubUrl
+          ++ "/commit/"
+          ++ _commitHash
+          ++ "|"
+          ++ _commitShortHash
+          ++ ">)"
+        when (null githubUrl) $ putStrLn ""
+      putStrLn ""
     unless (null features) $ do
       putStrLn "*New Features*"
       forM_ features $ \Commit {..} -> do
         putStr "• "
         forM_ _commitScope
           $ \scope -> putStr "*" >> putStr scope >> putStr "*: "
-        putStrLn _commitSummary
+        putStr _commitSummary
+        unless (null githubUrl)
+          .  putStrLn
+          $  " (<"
+          ++ githubUrl
+          ++ "/commit/"
+          ++ _commitHash
+          ++ "|"
+          ++ _commitShortHash
+          ++ ">)"
+        when (null githubUrl) $ putStrLn ""
+      putStrLn ""
     unless (null bugFixes) $ do
       putStrLn "*Bug Fixes*"
       forM_ bugFixes $ \Commit {..} -> do
         putStr "• "
         forM_ _commitScope
           $ \scope -> putStr "*" >> putStr scope >> putStr "*: "
-        putStrLn _commitSummary
+        putStr _commitSummary
+        unless (null githubUrl)
+          .  putStrLn
+          $  " (<"
+          ++ githubUrl
+          ++ "/commit/"
+          ++ _commitHash
+          ++ "|"
+          ++ _commitShortHash
+          ++ ">)"
+        when (null githubUrl) $ putStrLn ""
+      putStrLn ""
  where
   bugFixes        = filter ((== Fix) . _commitType) commits
   features        = filter ((== Feat) . _commitType) commits
   breakingChanges = filter (isInfixOf "BREAKING CHANGE" . _commitBody) commits
-
-hasBreakingChange :: Commit -> Bool
-hasBreakingChange = isInfixOf "BREAKING CHANGE" . _commitBody
-
-hasFeatureChange :: Commit -> Bool
-hasFeatureChange = (== Feat) . _commitType
-
-hasFixChange :: Commit -> Bool
-hasFixChange = (== Fix) . _commitType

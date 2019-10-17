@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Types
   ( CommitType(..)
   , Commit(..)
@@ -20,12 +22,13 @@ data CommitType
 
 data Commit =
   Commit
-    { _commitHash    :: String
-    , _commitType    :: CommitType
-    , _commitScope   :: Maybe String
+    { _commitHash :: String
+    , _commitType :: CommitType
+    , _commitScope :: Maybe String
     , _commitSummary :: String
-    , _commitBody    :: String
-    , _commitRefs    :: [String]
+    , _commitBody :: String
+    , _commitRefs :: [String]
+    , _commitShortHash :: String
     }
   deriving (Eq, Ord, Show)
 
@@ -35,4 +38,8 @@ data Version =
     , _versionMinor :: Int
     , _versionPatch :: Int
     }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+
+instance Show Version where
+  show Version {..} =
+    show _versionMajor ++ "." ++ show _versionMinor ++ "." ++ show _versionPatch
