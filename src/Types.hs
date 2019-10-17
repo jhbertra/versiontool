@@ -22,12 +22,12 @@ data CommitType
 
 data Commit =
   Commit
-    { _commitHash :: String
-    , _commitType :: CommitType
+    { _commitType :: CommitType
     , _commitScope :: Maybe String
     , _commitSummary :: String
     , _commitBody :: String
     , _commitRefs :: [String]
+    , _commitHash :: String
     , _commitShortHash :: String
     }
   deriving (Eq, Ord, Show)

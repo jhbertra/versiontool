@@ -92,12 +92,12 @@ readCommit hash = runMaybeT $ do
   refsParsed <- case runParser refs () "line" refsRaw of
     Left  _ -> MaybeT $ pure Nothing
     Right s -> MaybeT . pure $ Just s
-  pure $ Commit hash
-                _summaryLineType
+  pure $ Commit _summaryLineType
                 _summaryLineScope
                 _summaryLineSummary
                 body
                 refsParsed
+                hash
                 shortHash
 
 readField :: String -> String -> MaybeT IO String

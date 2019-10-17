@@ -119,6 +119,7 @@ handleChangelog title githubUrl Version {..} commits
         when (null githubUrl) $ putStrLn ""
       putStrLn ""
  where
-  bugFixes        = filter ((== Fix) . _commitType) commits
-  features        = filter ((== Feat) . _commitType) commits
-  breakingChanges = filter (isInfixOf "BREAKING CHANGE" . _commitBody) commits
+  bugFixes = sort $ filter ((== Fix) . _commitType) commits
+  features = sort $ filter ((== Feat) . _commitType) commits
+  breakingChanges =
+    sort $ filter (isInfixOf "BREAKING CHANGE" . _commitBody) commits
