@@ -1,5 +1,5 @@
 name: versiontool
-version: 0.1.0.0
+version: 1.0.0
 github: "githubuser/versiontool"
 license: BSD3
 author: "Author name here"
@@ -11,8 +11,8 @@ extra-source-files:
   - ChangeLog.md
 
 # Metadata used when publishing your package
-# synopsis:            Short description of your package
-# category:            Web
+synopsis: A tool for managing the semantic version of a codebase via commit analysis
+category: Command Line Tool
 
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
@@ -40,7 +40,6 @@ executables:
       - -threaded
       - -rtsopts
       - -with-rtsopts=-N
-      - -O2
       - -Wall
     dependencies:
       - versiontool
