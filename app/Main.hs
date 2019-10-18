@@ -15,6 +15,7 @@ import           Types
 data Versiontool
   = Next
    { tagPrefix :: String
+   , variant :: Maybe String
    }
   | Current
     { tagPrefix :: String
@@ -23,52 +24,49 @@ data Versiontool
     { title :: String
     , githubUrl :: String
     , tagPrefix :: String
+    , variant :: Maybe String
     }
   deriving (Show, Data, Typeable)
 
 next :: Versiontool
-next = Next { tagPrefix = def }
+next = Next { tagPrefix = def, variant = def }
 
 current :: Versiontool
 current = Current { tagPrefix = def }
 
 changelog :: Versiontool
-changelog = Changelog { tagPrefix = def, title = def, githubUrl = def }
+changelog =
+  Changelog { tagPrefix = def, title = def, githubUrl = def, variant = def }
 
 main :: IO ()
 main = handle =<< cmdArgs (modes [next, changelog, current])
 
 handle :: Versiontool -> IO ()
 handle Current {..}   = handleCurrent tagPrefix
-handle Next {..}      = handleAnalyze tagPrefix
+handle Next {..}      = handleAnalyze tagPrefix variant
 handle Changelog {..} = do
   currentVersion <- getCurrentVersion tagPrefix
   commits        <- getCommitsSinceLastRelease tagPrefix
-  case getNextVersion currentVersion commits of
+  case getNextVersion variant currentVersion commits of
     Just v  -> handleChangelog title githubUrl v commits
     Nothing -> pure ()
 
 handleCurrent :: String -> IO ()
 handleCurrent tagPrefix = print =<< getCurrentVersion tagPrefix
 
-handleAnalyze :: String -> IO ()
-handleAnalyze tagPrefix =
+handleAnalyze :: String -> Maybe String -> IO ()
+handleAnalyze tagPrefix variant =
   maybe (pure ()) print
-    =<< getNextVersion
+    =<< getNextVersion variant
     <$> getCurrentVersion tagPrefix
     <*> getCommitsSinceLastRelease tagPrefix
 
 handleChangelog :: String -> String -> Version -> [Commit] -> IO ()
-handleChangelog title githubUrl Version {..} commits
+handleChangelog title githubUrl version commits
   | null bugFixes && null features && null breakingChanges = pure ()
   | otherwise = do
     putStr "*"
-    putStr
-      $  show _versionMajor
-      ++ "."
-      ++ show _versionMinor
-      ++ "."
-      ++ show _versionPatch
+    putStr $ show version
     unless (null title) $ do
       putStr " "
       putStr title

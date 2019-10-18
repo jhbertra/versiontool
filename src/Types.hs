@@ -4,6 +4,7 @@ module Types
   ( CommitType(..)
   , Commit(..)
   , Version(..)
+  , PreReleaseVariant(..)
   )
 where
 
@@ -38,9 +39,25 @@ data Version =
     { _versionMajor :: Int
     , _versionMinor :: Int
     , _versionPatch :: Int
+    , _versionPreRelease :: Maybe PreReleaseVariant
+    }
+  deriving (Eq, Ord)
+
+data PreReleaseVariant =
+  PreReleaseVariant
+    { _preReleaseIdentifier :: String
+    , _preReleaseNumber     :: Int
     }
   deriving (Eq, Ord)
 
 instance Show Version where
   show Version {..} =
-    show _versionMajor ++ "." ++ show _versionMinor ++ "." ++ show _versionPatch
+    show _versionMajor
+      ++ "."
+      ++ show _versionMinor
+      ++ "."
+      ++ show _versionPatch
+      ++ case _versionPreRelease of
+           Just PreReleaseVariant {..} ->
+             "-" ++ _preReleaseIdentifier ++ show _preReleaseNumber
+           Nothing -> ""

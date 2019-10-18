@@ -6,12 +6,14 @@ module Git
   )
 where
 
+import           Control.Monad
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Maybe
 import           Data.Either
 import           Data.Functor
 import           Data.List
 import           Data.Maybe
+import           SemVer
 import           System.Exit
 import           System.Process
 import           Text.Parsec
@@ -34,30 +36,28 @@ data SummaryLine =
 
 getCurrentVersion :: String -> IO Version
 getCurrentVersion tagPrefix = do
-  let regex = "tag: " ++ tagPrefix ++ ".*([0-9])+\\.([0-9])+\\.([0-9])+"
+  let regex = "tag: " ++ tagPrefix ++ ".*" ++ "(" ++ semVerRegex ++ ")"
   result <- runMaybeT $ do
     (exitCode, stdout, _) <- liftIO
       $ readProcessWithExitCode "git" ["log", "--pretty=format:%D"] ""
     logs <- case exitCode of
       ExitSuccess -> pure $ lines stdout
       _           -> MaybeT $ pure Nothing
+    let parsedLines = map (runParser refs () "line") logs
     MaybeT
-      . pure
-      . fmap
-          (\tag ->
-            let [[_, major, minor, patch]] = tag =~ regex :: [[String]]
-            in  Version (read major) (read minor) (read patch)
-          )
-      . find (const True)
-      . map (head . filter (=~ regex))
-      . filter (any (=~ regex))
-      . rights
-      $ map (runParser refs () "line") logs
-  pure $ fromMaybe (Version 0 0 0) result
+      .   pure
+      . (\tag -> let [[_, v, _]] = tag =~ regex :: [[String]] in parseVersion v
+        )
+      <=< (MaybeT . pure . find (const True))
+      .   map (head . filter (=~ regex))
+      .   filter (any (=~ regex))
+      .   rights
+      $   parsedLines
+  pure $ fromMaybe (Version 0 0 0 Nothing) result
 
 getCommitsSinceLastRelease :: String -> IO [Commit]
 getCommitsSinceLastRelease tagPrefix = do
-  let regex = "tag: " ++ tagPrefix ++ ".*([0-9])+\\.([0-9])+\\.([0-9])+"
+  let regex = "tag: " ++ tagPrefix ++ ".*" ++ "(" ++ semVerRegex ++ ")"
   results <- runMaybeT $ do
     (exitCode, stdout, _) <- liftIO
       $ readProcessWithExitCode "git" ["log", "--pretty=format:%H|%D"] ""
