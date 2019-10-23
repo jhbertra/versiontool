@@ -75,63 +75,32 @@ handleChangelog title githubUrl version commits
     putStr =<< show . localDay . zonedTimeToLocalTime <$> getZonedTime
     putStrLn ")"
     putStrLn ""
-    unless (null breakingChanges) $ do
-      putStrLn "*BREAKING CHANGES*"
-      forM_ breakingChanges $ \Commit {..} -> do
-        putStr "• "
-        forM_ _commitScope
-          $ \scope -> putStr "*" >> putStr scope >> putStr "*: "
-        putStr . takeWhile (/= '\n') . last $ splitOn "BREAKING CHANGE: "
-                                                      _commitBody
-        unless (null githubUrl)
-          .  putStrLn
-          $  " (<"
-          ++ githubUrl
-          ++ "/commit/"
-          ++ _commitHash
-          ++ "|"
-          ++ _commitShortHash
-          ++ ">)"
-        when (null githubUrl) $ putStrLn ""
-      putStrLn ""
-    unless (null features) $ do
-      putStrLn "*New Features*"
-      forM_ features $ \Commit {..} -> do
-        putStr "• "
-        forM_ _commitScope
-          $ \scope -> putStr "*" >> putStr scope >> putStr "*: "
-        putStr _commitSummary
-        unless (null githubUrl)
-          .  putStrLn
-          $  " (<"
-          ++ githubUrl
-          ++ "/commit/"
-          ++ _commitHash
-          ++ "|"
-          ++ _commitShortHash
-          ++ ">)"
-        when (null githubUrl) $ putStrLn ""
-      putStrLn ""
-    unless (null bugFixes) $ do
-      putStrLn "*Bug Fixes*"
-      forM_ bugFixes $ \Commit {..} -> do
-        putStr "• "
-        forM_ _commitScope
-          $ \scope -> putStr "*" >> putStr scope >> putStr "*: "
-        putStr _commitSummary
-        unless (null githubUrl)
-          .  putStrLn
-          $  " (<"
-          ++ githubUrl
-          ++ "/commit/"
-          ++ _commitHash
-          ++ "|"
-          ++ _commitShortHash
-          ++ ">)"
-        when (null githubUrl) $ putStrLn ""
-      putStrLn ""
+    printSection "BREAKING CHANGES" breakingChanges
+      $ takeWhile (/= '\n')
+      . last
+      . splitOn "BREAKING CHANGE: "
+      . _commitBody
+    printSection "New Feature" features _commitSummary
+    printSection "Bug Fixes"   Fix      _commitSummary
  where
   bugFixes = sort $ filter ((== Fix) . _commitType) commits
   features = sort $ filter ((== Feat) . _commitType) commits
   breakingChanges =
     sort $ filter (isInfixOf "BREAKING CHANGE" . _commitBody) commits
+  printSection title commits renderCommit = unless (null features) $ do
+    putStrLn $ "*" ++ title ++ "*"
+    forM_ features $ \commit@Commit {..} -> do
+      putStr "• "
+      forM_ _commitScope $ \scope -> putStr "*" >> putStr scope >> putStr "*: "
+      putStr $ renderCommit commit
+      unless (null githubUrl)
+        .  putStrLn
+        $  " (<"
+        ++ githubUrl
+        ++ "/commit/"
+        ++ _commitHash
+        ++ "|"
+        ++ _commitShortHash
+        ++ ">)"
+      when (null githubUrl) $ putStrLn ""
+    putStrLn ""
