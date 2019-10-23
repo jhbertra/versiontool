@@ -63,8 +63,13 @@ handleAnalyze tagPrefix variant =
 
 handleChangelog :: String -> String -> Version -> [Commit] -> IO ()
 handleChangelog title githubUrl version commits
-  | null bugFixes && null features && null breakingChanges = pure ()
-  | otherwise = do
+  | null bugFixes
+    && null features
+    && null breakingChanges
+    && null performanceImprovements
+  = pure ()
+  | otherwise
+  = do
     putStr "*"
     putStr $ show version
     unless (null title) $ do
@@ -81,26 +86,32 @@ handleChangelog title githubUrl version commits
       . splitOn "BREAKING CHANGE: "
       . _commitBody
     printSection "New Feature" features _commitSummary
-    printSection "Bug Fixes"   Fix      _commitSummary
+    printSection "Bug Fixes"   bugFixes _commitSummary
+    printSection "Performance Improvements"
+                 performanceImprovements
+                 _commitSummary
  where
-  bugFixes = sort $ filter ((== Fix) . _commitType) commits
-  features = sort $ filter ((== Feat) . _commitType) commits
+  performanceImprovements = sort $ filter ((== Perf) . _commitType) commits
+  bugFixes                = sort $ filter ((== Fix) . _commitType) commits
+  features                = sort $ filter ((== Feat) . _commitType) commits
   breakingChanges =
     sort $ filter (isInfixOf "BREAKING CHANGE" . _commitBody) commits
-  printSection title commits renderCommit = unless (null features) $ do
-    putStrLn $ "*" ++ title ++ "*"
-    forM_ features $ \commit@Commit {..} -> do
-      putStr "• "
-      forM_ _commitScope $ \scope -> putStr "*" >> putStr scope >> putStr "*: "
-      putStr $ renderCommit commit
-      unless (null githubUrl)
-        .  putStrLn
-        $  " (<"
-        ++ githubUrl
-        ++ "/commit/"
-        ++ _commitHash
-        ++ "|"
-        ++ _commitShortHash
-        ++ ">)"
-      when (null githubUrl) $ putStrLn ""
-    putStrLn ""
+  printSection sectionTitle sectionCommits renderCommit =
+    unless (null sectionCommits) $ do
+      putStrLn $ "*" ++ sectionTitle ++ "*"
+      forM_ sectionCommits $ \commit@Commit {..} -> do
+        putStr "• "
+        forM_ _commitScope
+          $ \scope -> putStr "*" >> putStr scope >> putStr "*: "
+        putStr $ renderCommit commit
+        unless (null githubUrl)
+          .  putStrLn
+          $  " (<"
+          ++ githubUrl
+          ++ "/commit/"
+          ++ _commitHash
+          ++ "|"
+          ++ _commitShortHash
+          ++ ">)"
+        when (null githubUrl) $ putStrLn ""
+      putStrLn ""

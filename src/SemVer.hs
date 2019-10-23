@@ -43,10 +43,11 @@ getNextVersion preRelease version@Version {..} commits
   | variantsMatch && hasReleasableChange = Just incrementPreRelease
   | variantsDifferent && hasReleasableChange = Just resetPreRelease
   | isJust _versionPreRelease && isNothing preRelease = Just resetPreRelease
-  | any hasBreakingChange commits        = Just incrementMajorVersion
-  | any hasFeatureChange commits         = Just incrementMinorVersion
-  | any hasFixChange commits             = Just incrementPatchVersion
-  | otherwise                            = Nothing
+  | any hasBreakingChange commits = Just incrementMajorVersion
+  | any (hasChangeType Feat) commits = Just incrementMinorVersion
+  | any (apply2way (||) (hasChangeType Fix) (hasChangeType Perf)) commits = Just
+    incrementPatchVersion
+  | otherwise = Nothing
  where
   incrementPreRelease = version
     { _versionPreRelease = fmap
@@ -71,10 +72,10 @@ getNextVersion preRelease version@Version {..} commits
       == Just False
   hasReleasableChange =
     any hasBreakingChange commits
-      || any hasFeatureChange commits
-      || any hasFixChange     commits
-  hasBreakingChange    = isInfixOf "BREAKING CHANGE" . _commitBody
-  hasFeatureChange     = (== Feat) . _commitType
-  hasFixChange         = (== Fix) . _commitType
+      || any (hasChangeType Feat) commits
+      || any (hasChangeType Fix)  commits
+      || any (hasChangeType Perf) commits
+  hasBreakingChange = isInfixOf "BREAKING CHANGE" . _commitBody
+  hasChangeType t = (== t) . _commitType
   newPreReleaseVariant = PreReleaseVariant <$> preRelease <*> Just 1
-
+  apply2way f f1 f2 x = f (f1 x) (f2 x)

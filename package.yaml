@@ -1,5 +1,5 @@
 name: versiontool
-version: 1.0.0
+version: 2.0.0
 github: "githubuser/versiontool"
 license: BSD3
 author: "Author name here"
@@ -41,6 +41,7 @@ executables:
       - -rtsopts
       - -with-rtsopts=-N
       - -Wall
+      - -O1
     dependencies:
       - versiontool
 
